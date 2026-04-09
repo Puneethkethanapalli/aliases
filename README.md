@@ -6,6 +6,12 @@ Supports **bash**, **zsh**, and **fish**.
 
 ## Quick Start
 
+One-liner (fresh machine):
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/Puneethkethanapalli/aliases/main/setup.sh)
+```
+
+Or clone manually:
 ```bash
 git clone https://github.com/Puneethkethanapalli/aliases.git ~/aliases
 bash ~/aliases/setup.sh

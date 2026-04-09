@@ -5,8 +5,31 @@
 # ──────────────────────────────────────────────
 set -euo pipefail
 
+# ── Bootstrap from curl | bash ────────────────
+# If running via curl (no repo nearby), clone first and re-exec
+REPO_URL="https://github.com/Puneethkethanapalli/aliases.git"
+CLONE_DIR="$HOME/aliases"
+
+_script_dir() {
+    cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd
+}
+
+SCRIPT_DIR="$(_script_dir 2>/dev/null || echo "")"
+
+if [ -z "$SCRIPT_DIR" ] || [ ! -f "$SCRIPT_DIR/aliases.sh" ]; then
+    echo ""
+    echo -e "  \033[0;36m·\033[0m Running from remote — cloning repo first..."
+    echo ""
+    if [ -d "$CLONE_DIR/.git" ]; then
+        echo -e "  \033[0;36m·\033[0m Repo already exists at $CLONE_DIR, pulling latest..."
+        git -C "$CLONE_DIR" pull --ff-only
+    else
+        git clone "$REPO_URL" "$CLONE_DIR"
+    fi
+    exec bash "$CLONE_DIR/setup.sh" "$@"
+fi
+
 # ── Constants ─────────────────────────────────
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ALIASES_SH="$SCRIPT_DIR/aliases.sh"
 ALIASES_FISH="$SCRIPT_DIR/aliases.fish"
 FISH_CONF_DIR="$HOME/.config/fish/conf.d"
