@@ -6,9 +6,9 @@ Supports **bash**, **zsh**, and **fish**.
 
 ## Quick Start
 
-One-liner (fresh machine):
-```bash
-bash <(curl -sL https://raw.githubusercontent.com/Puneethkethanapalli/aliases/main/setup.sh)
+One-liner (fresh machine, works in bash, zsh, and fish):
+```sh
+curl -sL https://raw.githubusercontent.com/Puneethkethanapalli/aliases/main/setup.sh | bash
 ```
 
 Or clone manually:
