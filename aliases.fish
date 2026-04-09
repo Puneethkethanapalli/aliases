@@ -37,6 +37,18 @@ if command -q pacman
     abbr -a install 'sudo pacman -S'
     abbr -a remove 'sudo pacman -Rns'
     abbr -a search 'pacman -Ss'
+
+    # yay (AUR helper) — additive only, does not override pacman aliases
+    if command -q yay
+        abbr -a yi 'yay -S'
+        abbr -a yr 'yay -Rns'
+        abbr -a ys 'yay -Ss'
+        abbr -a yay-update 'yay -Syu'
+        abbr -a yc 'yay -Sc'
+        abbr -a ycc 'yay -Scc'
+        abbr -a ylo 'yay -Qdt'
+        abbr -a ylu 'yay -Qu'
+    end
 else if command -q apt
     abbr -a update 'sudo apt update && sudo apt upgrade'
     abbr -a install 'sudo apt install'

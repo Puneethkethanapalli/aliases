@@ -38,6 +38,18 @@ if command -v pacman > /dev/null 2>&1; then
     alias install='sudo pacman -S'
     alias remove='sudo pacman -Rns'
     alias search='pacman -Ss'
+
+    # yay (AUR helper) — additive only, does not override pacman aliases
+    if command -v yay > /dev/null 2>&1; then
+        alias yi='yay -S'                 # install from AUR
+        alias yr='yay -Rns'               # remove
+        alias ys='yay -Ss'                # search AUR + official
+        alias yay-update='yay -Syu'       # update official + AUR
+        alias yc='yay -Sc'                # clean build cache
+        alias ycc='yay -Scc'              # clean all cache
+        alias ylo='yay -Qdt'              # list orphaned packages
+        alias ylu='yay -Qu'               # list upgradable packages
+    fi
 elif command -v apt > /dev/null 2>&1; then
     alias update='sudo apt update && sudo apt upgrade'
     alias install='sudo apt install'

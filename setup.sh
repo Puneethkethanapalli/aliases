@@ -185,6 +185,81 @@ confirm() {
     esac
 }
 
+# ── Alias Summary ────────────────────────────
+
+_parse_aliases_sh() {
+    # Source in a clean interactive subshell to get only what's active on this machine
+    local shell_bin="$1"  # bash or zsh
+    local combined
+    combined="$("$shell_bin" --norc --noprofile -i -c ". '$ALIASES_SH'; alias; declare -F" 2>/dev/null)"
+
+    # Aliases (sorted)
+    while IFS='=' read -r name value; do
+        value="${value#\'}"
+        value="${value%\'}"
+        printf "    ${CYAN}%-16s${RESET} %s\n" "$name" "$value"
+    done < <(echo "$combined" | sed -n "s/^alias //p" | sort)
+
+    # User-defined functions — skip internal ones (prefixed with _)
+    while IFS= read -r fname; do
+        printf "    ${CYAN}%-16s${RESET} (function)\n" "$fname"
+    done < <(echo "$combined" | awk '/^declare -f [^_]/{print $3}' | sort)
+}
+
+_parse_aliases_fish() {
+    local file="$1"
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^#\ ──\ (.+)$ ]]; then
+            local section="${BASH_REMATCH[1]}"
+            section="${section%%─*}"
+            section="${section% }"
+            printf "\n    ${DIM}%s${RESET}\n" "$section"
+        elif [[ "$line" =~ ^[[:space:]]*abbr\ -a\ ([^[:space:]]+)[[:space:]]\'([^\']+)\' ]]; then
+            printf "    ${CYAN}%-16s${RESET} %s\n" "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+        elif [[ "$line" =~ ^function[[:space:]]+([a-z_][a-z0-9_]*) ]]; then
+            printf "    ${CYAN}%-16s${RESET} (function)\n" "${BASH_REMATCH[1]}"
+        fi
+    done < "$file"
+}
+
+show_aliases_summary() {
+    local -a shells_to_show=("$@")
+    local show_fish=false
+    local -a sh_shells=()
+
+    for s in "${shells_to_show[@]}"; do
+        case "$s" in
+            bash|zsh) sh_shells+=("$s") ;;
+            fish)     show_fish=true ;;
+        esac
+    done
+
+    echo ""
+    echo -e "  ${DIM}──────────────────────────────${RESET}"
+
+    # bash and zsh share the same aliases.sh — deduplicate if both configured
+    if [ ${#sh_shells[@]} -gt 0 ]; then
+        local label
+        label="$(IFS=', '; echo "${sh_shells[*]}")"
+        echo ""
+        echo -e "  ${BOLD}Aliases available in $label:${RESET}"
+        echo ""
+        # Use the first configured sh-compatible shell to evaluate
+        _parse_aliases_sh "${sh_shells[0]}"
+    fi
+
+    if $show_fish; then
+        echo ""
+        echo -e "  ${BOLD}Aliases available in fish:${RESET}"
+        _parse_aliases_fish "$ALIASES_FISH"
+        echo ""
+    fi
+
+    echo ""
+    echo -e "  ${DIM}(Conditional aliases like yay activate only when the tool is installed)${RESET}"
+    echo ""
+}
+
 # ── Modes ─────────────────────────────────────
 
 do_install() {
@@ -231,7 +306,14 @@ do_install() {
         add_source_line "$shell"
     done
 
-    echo ""
+    local now_configured=()
+    for shell in "${SHELLS[@]}"; do
+        if is_configured "$shell"; then
+            now_configured+=("$shell")
+        fi
+    done
+    [ ${#now_configured[@]} -gt 0 ] && show_aliases_summary "${now_configured[@]}"
+
     log_ok "${BOLD}Done!${RESET} Restart your shell or run: ${CYAN}exec \$SHELL${RESET}"
     echo ""
 }
@@ -327,7 +409,14 @@ do_update() {
         log_ok "All shells up to date"
     fi
 
-    echo ""
+    local now_configured=()
+    for shell in "${SHELLS[@]}"; do
+        if is_configured "$shell"; then
+            now_configured+=("$shell")
+        fi
+    done
+    [ ${#now_configured[@]} -gt 0 ] && show_aliases_summary "${now_configured[@]}"
+
     log_ok "${BOLD}Done!${RESET} Restart your shell or run: ${CYAN}exec \$SHELL${RESET}"
     echo ""
 }
