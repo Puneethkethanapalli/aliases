@@ -177,7 +177,7 @@ confirm() {
         printf "  %s [y/N]: " "$prompt"
     fi
 
-    read -r yn
+    read -r yn < /dev/tty
     yn="${yn:-$default}"
     case "$yn" in
         [Yy]*) return 0 ;;
@@ -551,7 +551,7 @@ show_menu() {
     printf "  Choose [1-4/q]: "
 
     local choice
-    read -r choice
+    read -r choice < /dev/tty
     case "$choice" in
         1) do_install ;;
         2) do_update ;;
