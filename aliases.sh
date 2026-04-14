@@ -22,7 +22,7 @@ alias nci='npm ci'
 alias gs='git status'
 alias ga='git add'
 alias gaa='git add --all'
-alias gc='git commit'
+alias gc='git commit -m ""'
 alias gp='git push'
 alias gl='git pull'
 alias gd='git diff'
@@ -44,7 +44,7 @@ if command -v pacman > /dev/null 2>&1; then
         alias yi='yay -S'                 # install from AUR
         alias yr='yay -Rns'               # remove
         alias ys='yay -Ss'                # search AUR + official
-        alias yay-update='yay -Syu'       # update official + AUR
+        alias yu='yay -Syu'               # update official + AUR
         alias yc='yay -Sc'                # clean build cache
         alias ycc='yay -Scc'              # clean all cache
         alias ylo='yay -Qdt'              # list orphaned packages
