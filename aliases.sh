@@ -72,10 +72,10 @@ alias la='ls -A --color=auto'
 alias grep='grep --color=auto'
 
 # ── Power / System ────────────────────────────
-alias reboot='sudo reboot'
-alias poweroff='sudo poweroff'
+alias rs='sudo reboot'
+alias po='sudo poweroff'
 alias halt='sudo halt'
-alias shutdown='sudo shutdown -h now'
+alias sd='sudo shutdown -h now'
 
 # ── Firewall (UFW) ────────────────────────────
 alias ufwe='sudo ufw enable'

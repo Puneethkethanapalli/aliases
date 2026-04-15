@@ -69,10 +69,10 @@ alias ll='ls -lAh --color=auto'
 alias la='ls -A --color=auto'
 
 # ── Power / System ────────────────────────────
-abbr -a reboot 'sudo reboot'
-abbr -a poweroff 'sudo poweroff'
+abbr -a rs 'sudo reboot'
+abbr -a po 'sudo poweroff'
 abbr -a halt 'sudo halt'
-abbr -a shutdown 'sudo shutdown -h now'
+abbr -a sd 'sudo shutdown -h now'
 
 # ── Firewall (UFW) ────────────────────────────
 abbr -a ufwe 'sudo ufw enable'
