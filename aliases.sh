@@ -71,6 +71,24 @@ alias ll='ls -lAh --color=auto'
 alias la='ls -A --color=auto'
 alias grep='grep --color=auto'
 
+# ── Power / System ────────────────────────────
+alias reboot='sudo reboot'
+alias poweroff='sudo poweroff'
+alias halt='sudo halt'
+alias shutdown='sudo shutdown -h now'
+
+# ── Firewall (UFW) ────────────────────────────
+alias ufwe='sudo ufw enable'
+alias ufwd='sudo ufw disable'
+alias ufws='sudo ufw status verbose'
+alias ufwa='sudo ufw allow'
+alias ufwden='sudo ufw deny'
+alias ufwr='sudo ufw reload'
+
+# ── Path Management ───────────────────────────
+alias pathadd='export PATH="$(pwd):$PATH"'
+alias pathappend='export PATH="$PATH:$(pwd)"'
+
 # ── Misc ──────────────────────────────────────
 alias c='clear'
 alias h='history'

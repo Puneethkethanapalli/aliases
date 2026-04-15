@@ -68,6 +68,24 @@ abbr -a .... 'cd ../../..'
 alias ll='ls -lAh --color=auto'
 alias la='ls -A --color=auto'
 
+# ── Power / System ────────────────────────────
+abbr -a reboot 'sudo reboot'
+abbr -a poweroff 'sudo poweroff'
+abbr -a halt 'sudo halt'
+abbr -a shutdown 'sudo shutdown -h now'
+
+# ── Firewall (UFW) ────────────────────────────
+abbr -a ufwe 'sudo ufw enable'
+abbr -a ufwd 'sudo ufw disable'
+abbr -a ufws 'sudo ufw status verbose'
+abbr -a ufwa 'sudo ufw allow'
+abbr -a ufwden 'sudo ufw deny'
+abbr -a ufwr 'sudo ufw reload'
+
+# ── Path Management ───────────────────────────
+abbr -a pathadd 'fish_add_path'
+abbr -a pathappend 'fish_add_path --append'
+
 # ── Misc ──────────────────────────────────────
 abbr -a c clear
 abbr -a h history
