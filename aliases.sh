@@ -20,7 +20,7 @@ alias nci='npm ci'
 
 # ── Git ───────────────────────────────────────
 alias gs='git status'
-alias ga='git add'
+alias ga='git add .'
 alias gaa='git add --all'
 alias gc='git commit -m ""'
 alias gp='git push'
@@ -34,10 +34,10 @@ alias gst='git stash'
 
 # ── System (OS-detected) ─────────────────────
 if command -v pacman > /dev/null 2>&1; then
-    alias update='sudo pacman -Syu'
-    alias install='sudo pacman -S'
-    alias remove='sudo pacman -Rns'
-    alias search='pacman -Ss'
+    alias pu='sudo pacman -Syu'
+    alias ps='sudo pacman -S'
+    alias pr='sudo pacman -Rns'
+    alias ps='pacman -Ss'
 
     # yay (AUR helper) — additive only, does not override pacman aliases
     if command -v yay > /dev/null 2>&1; then

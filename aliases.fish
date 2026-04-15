@@ -19,7 +19,7 @@ abbr -a nci 'npm ci'
 
 # ── Git ───────────────────────────────────────
 abbr -a gs 'git status'
-abbr -a ga 'git add'
+abbr -a ga 'git add .'
 abbr -a gaa 'git add --all'
 abbr -a gc 'git commit -m ""'
 abbr -a gp 'git push'
@@ -33,10 +33,10 @@ abbr -a gst 'git stash'
 
 # ── System (OS-detected) ─────────────────────
 if command -q pacman
-    abbr -a update 'sudo pacman -Syu'
-    abbr -a install 'sudo pacman -S'
-    abbr -a remove 'sudo pacman -Rns'
-    abbr -a search 'pacman -Ss'
+    abbr -a pu 'sudo pacman -Syu'
+    abbr -a ps 'sudo pacman -S'
+    abbr -a pr 'sudo pacman -Rns'
+    abbr -a ps 'pacman -Ss'
 
     # yay (AUR helper) — additive only, does not override pacman aliases
     if command -q yay
