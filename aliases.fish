@@ -34,7 +34,7 @@ abbr -a gst 'git stash'
 # ── System (OS-detected) ─────────────────────
 if command -q pacman
     abbr -a pu 'sudo pacman -Syu'
-    abbr -a ps 'sudo pacman -S'
+    abbr -a pi 'sudo pacman -S'
     abbr -a pr 'sudo pacman -Rns'
     abbr -a ps 'pacman -Ss'
 
