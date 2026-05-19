@@ -45,6 +45,7 @@ if command -v pacman > /dev/null 2>&1; then
         alias yr='yay -Rns'               # remove
         alias ys='yay -Ss'                # search AUR + official
         alias yu='yay -Syu'               # update official + AUR
+        alias pyu='sudo pacman -Syu && yay -Syu'
         alias yc='yay -Sc'                # clean build cache
         alias ycc='yay -Scc'              # clean all cache
         alias ylo='yay -Qdt'              # list orphaned packages

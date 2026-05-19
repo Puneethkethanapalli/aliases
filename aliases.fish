@@ -44,6 +44,7 @@ if command -q pacman
         abbr -a yr 'yay -Rns'
         abbr -a ys 'yay -Ss'
         abbr -a yu 'yay -Syu'
+        abbr -a pyu 'sudo pacman -Syu && yay -Syu'
         abbr -a yc 'yay -Sc'
         abbr -a ycc 'yay -Scc'
         abbr -a ylo 'yay -Qdt'
