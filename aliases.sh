@@ -95,4 +95,5 @@ alias c='clear'
 alias h='history'
 alias ports='ss -tulnp'
 alias myip='curl -s ifconfig.me'
+alias bp='btop --force-utf'
 mkcd() { mkdir -p "$1" && cd "$1"; }

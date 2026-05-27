@@ -92,6 +92,7 @@ abbr -a c clear
 abbr -a h history
 abbr -a ports 'ss -tulnp'
 abbr -a myip 'curl -s ifconfig.me'
+abbr -a bp 'btop --force-utf'
 
 function mkcd
     mkdir -p $argv[1]; and cd $argv[1]
