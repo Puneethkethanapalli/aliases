@@ -35,7 +35,7 @@ alias gst='git stash'
 # ── System (OS-detected) ─────────────────────
 if command -v pacman > /dev/null 2>&1; then
     alias pu='sudo pacman -Syu'
-    alias ps='sudo pacman -S'
+    alias pi='sudo pacman -S'
     alias pr='sudo pacman -Rns'
     alias ps='pacman -Ss'
 

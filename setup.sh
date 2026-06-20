@@ -94,11 +94,56 @@ is_configured() {
             return 1
             ;;
         fish)
-            [ -L "$FISH_TARGET" ] || [ -f "$FISH_TARGET" ] && return 0
+            [ -L "$FISH_TARGET" ] &&
+                [ "$(readlink -f "$FISH_TARGET" 2>/dev/null)" = "$(readlink -f "$ALIASES_FISH" 2>/dev/null)" ] &&
+                return 0
             return 1
             ;;
     esac
     return 1
+}
+
+verify_shell() {
+    local shell="$1"
+
+    case "$shell" in
+        bash)
+            bash --noprofile --rcfile "$HOME/.bashrc" -ic \
+                'alias nd >/dev/null && alias pi >/dev/null && declare -F mkcd >/dev/null' \
+                >/dev/null 2>&1
+            ;;
+        zsh)
+            ZDOTDIR="$HOME" zsh -ic \
+                'alias nd >/dev/null && alias pi >/dev/null && whence -w mkcd >/dev/null' \
+                >/dev/null 2>&1
+            ;;
+        fish)
+            fish -ic \
+                'abbr --query nd; and abbr --query pi; and functions --query mkcd' \
+                >/dev/null 2>&1
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+verify_shells() {
+    local failed=0
+    local shell
+
+    echo ""
+    log_info "Verifying shell startup..."
+    for shell in "$@"; do
+        if verify_shell "$shell"; then
+            log_ok "$shell — aliases load correctly"
+        else
+            log_err "$shell — configuration exists but aliases failed to load"
+            failed=1
+        fi
+    done
+
+    return "$failed"
 }
 
 get_rc_file() {
@@ -312,7 +357,13 @@ do_install() {
             now_configured+=("$shell")
         fi
     done
-    [ ${#now_configured[@]} -gt 0 ] && show_aliases_summary "${now_configured[@]}"
+    if [ ${#now_configured[@]} -gt 0 ]; then
+        verify_shells "${now_configured[@]}" || {
+            log_err "Installation verification failed"
+            exit 1
+        }
+        show_aliases_summary "${now_configured[@]}"
+    fi
 
     log_ok "${BOLD}Done!${RESET} Restart your shell or run: ${CYAN}exec \$SHELL${RESET}"
     echo ""
@@ -415,7 +466,13 @@ do_update() {
             now_configured+=("$shell")
         fi
     done
-    [ ${#now_configured[@]} -gt 0 ] && show_aliases_summary "${now_configured[@]}"
+    if [ ${#now_configured[@]} -gt 0 ]; then
+        verify_shells "${now_configured[@]}" || {
+            log_err "Update verification failed"
+            exit 1
+        }
+        show_aliases_summary "${now_configured[@]}"
+    fi
 
     log_ok "${BOLD}Done!${RESET} Restart your shell or run: ${CYAN}exec \$SHELL${RESET}"
     echo ""

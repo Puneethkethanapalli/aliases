@@ -5,7 +5,7 @@
 
 # Prevent double-loading
 if set -q _ALIASES_LOADED
-    exit
+    return
 end
 set -g _ALIASES_LOADED 1
 
