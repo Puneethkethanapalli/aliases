@@ -20,14 +20,15 @@ abbr -a -g nt 'npm test'
 abbr -a -g nci 'npm ci'
 
 # ── Git ───────────────────────────────────────
+# (gad/gdf rather than ga/gd: Omarchy uses those for git worktree add/remove)
 abbr -a -g gs 'git status'
-abbr -a -g ga 'git add'
+abbr -a -g gad 'git add'
 abbr -a -g gaa 'git add --all'
 abbr -a -g gc 'git commit'
 abbr -a -g gcm 'git commit -m'
 abbr -a -g gp 'git push'
 abbr -a -g gl 'git pull'
-abbr -a -g gd 'git diff'
+abbr -a -g gdf 'git diff'
 abbr -a -g glog 'git log --oneline --graph --decorate -20'
 abbr -a -g gb 'git branch'
 abbr -a -g gco 'git checkout'
@@ -90,8 +91,9 @@ end
 abbr -a -g .. 'cd ..'
 abbr -a -g ... 'cd ../..'
 abbr -a -g .... 'cd ../../..'
-alias ll='ls -lAh --color=auto'
-alias la='ls -A --color=auto'
+# `command` skips any `ls` wrapper function (e.g. Omarchy's eza one) to match bash
+alias ll='command ls -lAh --color=auto'
+alias la='command ls -A --color=auto'
 
 # ── Power / System (each asks before acting) ──
 function _confirm_power
@@ -138,8 +140,9 @@ function pathappend --description 'Append current directory to PATH (this sessio
 end
 
 # ── Misc ──────────────────────────────────────
-abbr -a -g c clear
-abbr -a -g h history
+# (cls/hist rather than c/h: Omarchy uses those for opencode and herdr)
+abbr -a -g cls clear
+abbr -a -g hist history
 abbr -a -g ports 'ss -tulnp'
 abbr -a -g myip 'curl -s ifconfig.me'
 if command -q btop
@@ -147,5 +150,6 @@ if command -q btop
 end
 
 function mkcd
-    mkdir -p -- $argv[1]; and cd -- $argv[1]
+    # builtin cd: skip cd wrappers like Omarchy's zoxide one, which mishandle `--`
+    mkdir -p -- $argv[1]; and builtin cd -- $argv[1]
 end

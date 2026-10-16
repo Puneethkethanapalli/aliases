@@ -23,14 +23,15 @@ alias nt='npm test'
 alias nci='npm ci'
 
 # ── Git ───────────────────────────────────────
+# (gad/gdf rather than ga/gd: Omarchy uses those for git worktree add/remove)
 alias gs='git status'
-alias ga='git add'
+alias gad='git add'
 alias gaa='git add --all'
 alias gc='git commit'
 alias gcm='git commit -m'
 alias gp='git push'
 alias gl='git pull'
-alias gd='git diff'
+alias gdf='git diff'
 alias glog='git log --oneline --graph --decorate -20'
 alias gb='git branch'
 alias gco='git checkout'
@@ -93,9 +94,11 @@ fi
 alias ..='cd ..'
 alias ...='cd ../..'
 alias ....='cd ../../..'
-alias ls='ls --color=auto'
-alias ll='ls -lAh --color=auto'
-alias la='ls -A --color=auto'
+# Keep an `ls` someone already set up (e.g. Omarchy's eza one); ll/la always
+# use the real ls via `command`, so they behave the same everywhere
+alias ls > /dev/null 2>&1 || alias ls='ls --color=auto'
+alias ll='command ls -lAh --color=auto'
+alias la='command ls -A --color=auto'
 alias grep='grep --color=auto'
 
 # ── Power / System (each asks before acting) ──
@@ -128,13 +131,15 @@ alias pathadd='export PATH="$(pwd):$PATH"'
 alias pathappend='export PATH="$PATH:$(pwd)"'
 
 # ── Misc ──────────────────────────────────────
-alias c='clear'
-alias h='history'
+# (cls/hist rather than c/h: Omarchy uses those for opencode and herdr)
+alias cls='clear'
+alias hist='history'
 alias ports='ss -tulnp'
 alias myip='curl -s ifconfig.me'
 if command -v btop > /dev/null 2>&1; then
     alias bp='btop --force-utf'
 fi
-mkcd() { mkdir -p -- "$1" && cd -- "$1"; }
+# builtin cd: skip cd wrappers like Omarchy's zoxide one, which mishandle `--`
+mkcd() { mkdir -p -- "$1" && builtin cd -- "$1"; }
 
 unset _sudo

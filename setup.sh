@@ -41,6 +41,13 @@ SOURCE_TAG="# aliases-bootstrap"
 REPO_MARKER="github.com/Puneethkethanapalli/aliases"
 # Set by -y/--yes: answer yes to every prompt
 ASSUME_YES=false
+# Markers around the ~/.bashrc block that hands interactive bash over to fish (Omarchy)
+FISH_DEFAULT_START="# >>> fish-default (added by aliases setup.sh) >>>"
+FISH_DEFAULT_END="# <<< fish-default <<<"
+# Set once the user agrees to install fish on Omarchy: configure and default it without re-asking
+WANT_FISH_DEFAULT=false
+# Set when this run made fish the default, to adjust the closing message
+FISH_DEFAULT_SET=false
 
 # The source line we inject into bash/zsh rc files
 source_line() {
@@ -223,27 +230,33 @@ add_source_line() {
     esac
 }
 
+# Remove the lines from the start marker through the end marker (the same line for a
+# one-line tag), plus the blank line we put above them. Writes the result back through
+# the file (not sed -i), so a symlinked rc managed by stow/chezmoi etc. stays a symlink.
+strip_block() {
+    local file="$1" start="$2" end="$3" tmp
+    tmp="$(mktemp)"
+    awk -v start="$start" -v end="$end" '
+        !skip && index($0, start) { blank = 0; skip = 1 }
+        skip                      { if (index($0, end)) skip = 0; next }
+        blank                     { print ""; blank = 0 }
+        /^$/                      { blank = 1; next }
+                                  { print }
+        END                       { if (blank) print "" }
+    ' "$file" > "$tmp"
+    cat "$tmp" > "$file"
+    rm -f "$tmp"
+}
+
 remove_source_line() {
     local shell="$1"
 
     case "$shell" in
         bash|zsh)
-            local rc tmp
+            local rc
             rc="$(get_rc_file "$shell")"
             if [ -f "$rc" ] && grep -qF "$SOURCE_TAG" "$rc" 2>/dev/null; then
-                # Drop our line and the blank line install put above it. Write the
-                # result back through the file (not sed -i), so a symlinked rc
-                # managed by stow/chezmoi etc. stays a symlink.
-                tmp="$(mktemp)"
-                awk -v tag="$SOURCE_TAG" '
-                    index($0, tag) { blank = 0; next }
-                    blank          { print ""; blank = 0 }
-                    /^$/           { blank = 1; next }
-                                   { print }
-                    END            { if (blank) print "" }
-                ' "$rc" > "$tmp"
-                cat "$tmp" > "$rc"
-                rm -f "$tmp"
+                strip_block "$rc" "$SOURCE_TAG" "$SOURCE_TAG"
                 log_ok "$shell — removed source line from $rc"
             else
                 log_info "$shell — not configured, nothing to remove"
@@ -285,6 +298,109 @@ confirm() {
         [Yy]*) return 0 ;;
         *) return 1 ;;
     esac
+}
+
+# ── Omarchy ───────────────────────────────────
+
+is_omarchy() {
+    grep -qsE '^ID="?omarchy"?$' /etc/os-release || command -v omarchy > /dev/null 2>&1
+}
+
+login_shell_name() {
+    local entry
+    entry="$(getent passwd "$(id -un)" 2>/dev/null)" || true
+    entry="${entry##*:}"
+    echo "${entry##*/}"
+}
+
+# True if fish is the login shell, or ~/.bashrc already hands over to it
+# (our block, or the template that `omarchy-setup-fish` writes)
+fish_is_default() {
+    [ "$(login_shell_name)" = "fish" ] && return 0
+    grep -qE '^[[:space:]]*exec fish' "$HOME/.bashrc" 2>/dev/null
+}
+
+# Omarchy's way of defaulting to fish (same logic as omarchy-fish's bashrc template):
+# the login shell stays bash, so the session and everything ~/.bashrc exports above
+# this block are kept, then top-level interactive bash execs fish.
+fish_default_block() {
+    echo "$FISH_DEFAULT_START"
+    cat <<'EOF'
+# Interactive terminals hand over to fish; the login shell stays bash so everything
+# exported above is inherited. Running `bash` from inside fish still gives you bash.
+if command -v fish > /dev/null 2>&1 &&
+    [[ $(command ps --no-header --pid=$PPID --format=comm) != "fish" && -z ${BASH_EXECUTION_STRING} && ${SHLVL} == 1 ]]; then
+    shopt -q login_shell && exec fish --login
+    exec fish
+fi
+EOF
+    echo "$FISH_DEFAULT_END"
+}
+
+# Insert the block right after the "not interactive → return" guard, where Omarchy's
+# template puts it, so bash-only setup further down is skipped. We don't use
+# omarchy-setup-fish itself: it replaces the whole ~/.bashrc with its template.
+add_fish_default() {
+    local rc="$HOME/.bashrc" tmp
+    [ -f "$rc" ] || touch "$rc"
+    tmp="$(mktemp)"
+    BLOCK="$(fish_default_block)" awk '
+        { print }
+        !done && index($0, "$- != *i*") && index($0, "return") { print ""; print ENVIRON["BLOCK"]; done = 1 }
+        END { if (!done) { print ""; print ENVIRON["BLOCK"] } }
+    ' "$rc" > "$tmp"
+    cat "$tmp" > "$rc"
+    rm -f "$tmp"
+    FISH_DEFAULT_SET=true
+}
+
+# Omarchy ships bash only — offer its fish package (fish plus Omarchy's fish config).
+# Saying yes also means: configure aliases for fish and make it the default shell.
+omarchy_offer_fish() {
+    is_omarchy || return 0
+    command -v fish > /dev/null 2>&1 && return 0
+
+    log_info "Omarchy detected — fish isn't installed (Omarchy ships with bash)"
+    if ! confirm "Install fish (omarchy pkg add omarchy-fish) and make it your default shell?" "n"; then
+        log_info "Skipped fish"
+        echo ""
+        return 0
+    fi
+    echo ""
+    if omarchy pkg add omarchy-fish && command -v fish > /dev/null 2>&1; then
+        WANT_FISH_DEFAULT=true
+        log_ok "fish installed"
+    else
+        log_err "Couldn't install omarchy-fish — continuing without fish"
+    fi
+    echo ""
+}
+
+# Runs once fish has the aliases. Asks first, unless the user already said yes above.
+omarchy_offer_fish_default() {
+    is_omarchy || return 0
+    is_configured fish || return 0
+    fish_is_default && return 0
+
+    echo ""
+    if ! $WANT_FISH_DEFAULT &&
+        ! confirm "Make fish your default shell? (new terminals open in fish; login shell stays bash)" "n"; then
+        log_info "Kept bash as the default shell"
+        echo ""
+        return 0
+    fi
+    add_fish_default
+    log_ok "fish is now the default shell — hand-off added to ~/.bashrc"
+    echo ""
+}
+
+print_done() {
+    if $FISH_DEFAULT_SET; then
+        log_ok "${BOLD}Done!${RESET} Open a new terminal to start in fish"
+    else
+        log_ok "${BOLD}Done!${RESET} Restart your shell or run: ${CYAN}exec \$SHELL${RESET}"
+    fi
+    echo ""
 }
 
 # ── Alias Summary ────────────────────────────
@@ -402,6 +518,7 @@ do_install() {
         exit 1
     fi
 
+    omarchy_offer_fish
     detect_shells
 
     if [ ${#SHELLS[@]} -eq 0 ]; then
@@ -447,8 +564,8 @@ do_install() {
         show_aliases_summary "${now_configured[@]}"
     fi
 
-    log_ok "${BOLD}Done!${RESET} Restart your shell or run: ${CYAN}exec \$SHELL${RESET}"
-    echo ""
+    omarchy_offer_fish_default
+    print_done
 }
 
 do_update() {
@@ -473,6 +590,8 @@ do_update() {
     fi
 
     echo ""
+
+    omarchy_offer_fish
 
     # Re-detect shells (may have installed new ones since last run)
     detect_shells
@@ -521,7 +640,10 @@ do_update() {
         echo ""
 
         for shell in "${new_shells[@]}"; do
-            if confirm "Configure aliases for $shell?"; then
+            # Already agreed to while installing fish on Omarchy
+            if [ "$shell" = fish ] && $WANT_FISH_DEFAULT; then
+                add_source_line "$shell"
+            elif confirm "Configure aliases for $shell?"; then
                 add_source_line "$shell"
             else
                 log_info "Skipped $shell"
@@ -548,8 +670,8 @@ do_update() {
         show_aliases_summary "${now_configured[@]}"
     fi
 
-    log_ok "${BOLD}Done!${RESET} Restart your shell or run: ${CYAN}exec \$SHELL${RESET}"
-    echo ""
+    omarchy_offer_fish_default
+    print_done
 }
 
 do_uninstall() {
@@ -567,30 +689,46 @@ do_uninstall() {
         fi
     done
 
-    if [ ${#configured[@]} -eq 0 ]; then
+    local has_fish_default=false
+    grep -qF "$FISH_DEFAULT_START" "$HOME/.bashrc" 2>/dev/null && has_fish_default=true
+
+    if [ ${#configured[@]} -eq 0 ] && ! $has_fish_default; then
         log_info "Nothing to uninstall — no shells are configured"
         echo ""
         return
     fi
 
-    echo -e "  ${BOLD}Will remove aliases from:${RESET}"
-    for shell in "${configured[@]}"; do
-        local rc
-        rc="$(get_rc_file "$shell")"
-        echo -e "    ${RED}[-]${RESET} $shell  ${DIM}($rc)${RESET}"
-    done
-    echo ""
-
-    if ! confirm "Proceed with uninstall?" "n"; then
+    if [ ${#configured[@]} -gt 0 ]; then
+        echo -e "  ${BOLD}Will remove aliases from:${RESET}"
+        for shell in "${configured[@]}"; do
+            local rc
+            rc="$(get_rc_file "$shell")"
+            echo -e "    ${RED}[-]${RESET} $shell  ${DIM}($rc)${RESET}"
+        done
         echo ""
-        log_info "Aborted"
-        return
+
+        if ! confirm "Proceed with uninstall?" "n"; then
+            echo ""
+            log_info "Aborted"
+            return
+        fi
+
+        echo ""
+        for shell in "${configured[@]}"; do
+            remove_source_line "$shell"
+        done
     fi
 
-    echo ""
-    for shell in "${configured[@]}"; do
-        remove_source_line "$shell"
-    done
+    # Removing aliases doesn't have to mean leaving fish, so this is asked separately
+    if $has_fish_default; then
+        echo ""
+        if confirm "Also make bash your default shell again (removes the fish hand-off from ~/.bashrc)?" "n"; then
+            strip_block "$HOME/.bashrc" "$FISH_DEFAULT_START" "$FISH_DEFAULT_END"
+            log_ok "bash is the default shell again"
+        else
+            log_info "fish stays the default shell"
+        fi
+    fi
 
     echo ""
     log_ok "${BOLD}Done!${RESET} Restart your shell or run: ${CYAN}exec \$SHELL${RESET}"
@@ -647,6 +785,13 @@ do_status() {
     else
         log_err "Aliases: ${DIM}$ALIASES_SH (missing!)${RESET}"
     fi
+
+    local default_shell
+    default_shell="$(login_shell_name)"
+    if grep -qE '^[[:space:]]*exec fish' "$HOME/.bashrc" 2>/dev/null; then
+        default_shell="fish (launched from ~/.bashrc)"
+    fi
+    log_ok "Default: ${DIM}${default_shell:-unknown}${RESET}"
 
     # Show git info
     if [ -d "$SCRIPT_DIR/.git" ]; then

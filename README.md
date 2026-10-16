@@ -48,17 +48,22 @@ This pulls the latest changes and reconfigures any newly installed shells.
 | `ni`    | `npm install`                                |
 | `nb`    | `npm run build`                              |
 | `gs`    | `git status`                                 |
-| `ga`    | `git add`                                    |
+| `gad`   | `git add`                                    |
 | `gaa`   | `git add --all`                              |
 | `gc`    | `git commit`                                 |
 | `gcm`   | `git commit -m` (e.g. `gcm "fix typo"`)      |
 | `gp`    | `git push`                                   |
 | `gl`    | `git pull`                                   |
+| `gdf`   | `git diff`                                   |
 | `glog`  | `git log --oneline --graph --decorate -20`   |
 | `ll`    | `ls -lAh`                                    |
 | `..`    | `cd ..`                                      |
-| `c`     | `clear`                                      |
+| `cls`   | `clear`                                      |
+| `hist`  | `history`                                    |
 | `myip`  | `curl -s ifconfig.me`                        |
+
+Names are picked so they don't override Omarchy's own (`c`, `ga`, `gd`, `h`), and an `ls` that's
+already set up (like Omarchy's eza one) is left alone.
 
 ### Packages — same names on every distro
 
@@ -82,6 +87,21 @@ so it isn't shadowed).
 `rs` (reboot), `po` (power off), `sd` (shut down) and `halt` ask for confirmation before acting.
 
 See [`aliases.sh`](aliases.sh) for the full list.
+
+## Omarchy
+
+Omarchy ships with bash only. On Omarchy, `setup.sh install` (and `update`):
+
+- If fish isn't installed, asks whether to install it with `omarchy pkg add omarchy-fish`
+  (fish plus Omarchy's fish config). Yes installs it, sets up the aliases for fish and makes fish
+  your default shell.
+- If fish is installed but isn't your default yet, asks whether to make it the default.
+
+"Default" works the way Omarchy's own `omarchy-setup-fish` does it: your login shell stays bash,
+and a short marked block in `~/.bashrc` hands interactive terminals over to fish. Everything your
+`~/.bashrc` exports is still set up, and running `bash` from fish still gives you bash. Unlike
+`omarchy-setup-fish`, it doesn't replace your `~/.bashrc`. `setup.sh uninstall` asks whether to
+remove the block and go back to bash.
 
 ## How It Works
 
