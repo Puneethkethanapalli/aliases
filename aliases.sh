@@ -101,19 +101,19 @@ alias ll='command ls -lAh --color=auto'
 alias la='command ls -A --color=auto'
 alias grep='grep --color=auto'
 
-# ── Power / System (each asks before acting) ──
+# ── Power / System ────────────────────────────
+alias rs="$_sudo reboot"
+alias po="$_sudo poweroff"
 _confirm_power() {
     local reply
     printf '%s now? [y/N] ' "$1"
     read -r reply
     case "$reply" in [yY]*) return 0 ;; *) return 1 ;; esac
 }
-alias rs="_confirm_power Reboot && $_sudo reboot"
-alias po="_confirm_power 'Power off' && $_sudo poweroff"
 alias halt="_confirm_power Halt && $_sudo halt"
 # Skip if the `sd` find-and-replace tool is installed, so we don't shadow it
 if ! command -v sd > /dev/null 2>&1; then
-    alias sd="_confirm_power 'Shut down' && $_sudo shutdown -h now"
+    alias sd="$_sudo shutdown -h now"
 fi
 
 # ── Firewall (UFW) ────────────────────────────

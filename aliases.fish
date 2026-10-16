@@ -95,18 +95,18 @@ abbr -a -g .... 'cd ../../..'
 alias ll='command ls -lAh --color=auto'
 alias la='command ls -A --color=auto'
 
-# ── Power / System (each asks before acting) ──
+# ── Power / System ────────────────────────────
+function rs -V sudo --description 'Reboot'
+    $sudo reboot
+end
+
+function po -V sudo --description 'Power off'
+    $sudo poweroff
+end
+
 function _confirm_power
     read -l -P "$argv[1] now? [y/N] " reply
     string match -qi 'y*' -- $reply
-end
-
-function rs -V sudo --description 'Reboot (asks first)'
-    _confirm_power Reboot; and $sudo reboot
-end
-
-function po -V sudo --description 'Power off (asks first)'
-    _confirm_power 'Power off'; and $sudo poweroff
 end
 
 function halt -V sudo --description 'Halt (asks first)'
@@ -115,8 +115,8 @@ end
 
 # Skip if the `sd` find-and-replace tool is installed, so we don't shadow it
 if not command -q sd
-    function sd -V sudo --description 'Shut down (asks first)'
-        _confirm_power 'Shut down'; and $sudo shutdown -h now
+    function sd -V sudo --description 'Shut down'
+        $sudo shutdown -h now
     end
 end
 

@@ -84,7 +84,8 @@ so it isn't shadowed).
 
 ### Power
 
-`rs` (reboot), `po` (power off), `sd` (shut down) and `halt` ask for confirmation before acting.
+`rs` (reboot), `po` (power off) and `sd` (shut down) act immediately, with no confirmation.
+`halt` still asks before acting.
 
 See [`aliases.sh`](aliases.sh) for the full list.
 
