@@ -2,98 +2,150 @@
 #  Fish Shell Aliases — github.com/Puneethkethanapalli/aliases
 # ──────────────────────────────────────────────
 # Symlinked to ~/.config/fish/conf.d/aliases.fish via setup.sh
+# Abbreviations use -g so fish < 3.6 doesn't save them as universal
+# variables (which would outlive an uninstall).
 
-# Prevent double-loading
-if set -q _ALIASES_LOADED
-    return
+# Privilege prefix: doas where sudo isn't installed (e.g. Alpine), else sudo
+set -l sudo sudo
+if not command -q sudo; and command -q doas
+    set sudo doas
 end
-set -g _ALIASES_LOADED 1
 
 # ── Node / NPM ───────────────────────────────
-abbr -a nd 'npm run dev'
-abbr -a ns 'npm start'
-abbr -a ni 'npm install'
-abbr -a nb 'npm run build'
-abbr -a nt 'npm test'
-abbr -a nci 'npm ci'
+abbr -a -g nd 'npm run dev'
+abbr -a -g ns 'npm start'
+abbr -a -g ni 'npm install'
+abbr -a -g nb 'npm run build'
+abbr -a -g nt 'npm test'
+abbr -a -g nci 'npm ci'
 
 # ── Git ───────────────────────────────────────
-abbr -a gs 'git status'
-abbr -a ga 'git add .'
-abbr -a gaa 'git add --all'
-abbr -a gc 'git commit -m ""'
-abbr -a gp 'git push'
-abbr -a gl 'git pull'
-abbr -a gd 'git diff'
-abbr -a glog 'git log --oneline --graph --decorate -20'
-abbr -a gb 'git branch'
-abbr -a gco 'git checkout'
-abbr -a gsw 'git switch'
-abbr -a gst 'git stash'
+abbr -a -g gs 'git status'
+abbr -a -g ga 'git add'
+abbr -a -g gaa 'git add --all'
+abbr -a -g gc 'git commit'
+abbr -a -g gcm 'git commit -m'
+abbr -a -g gp 'git push'
+abbr -a -g gl 'git pull'
+abbr -a -g gd 'git diff'
+abbr -a -g glog 'git log --oneline --graph --decorate -20'
+abbr -a -g gb 'git branch'
+abbr -a -g gco 'git checkout'
+abbr -a -g gsw 'git switch'
+abbr -a -g gst 'git stash'
 
-# ── System (OS-detected) ─────────────────────
+# ── Packages (same names on every distro) ─────
+#   pu = update system   pi = install   pr = remove   pss = search
 if command -q pacman
-    abbr -a pu 'sudo pacman -Syu'
-    abbr -a pi 'sudo pacman -S'
-    abbr -a pr 'sudo pacman -Rns'
-    abbr -a ps 'pacman -Ss'
+    abbr -a -g pu "$sudo pacman -Syu"
+    abbr -a -g pi "$sudo pacman -S"
+    abbr -a -g pr "$sudo pacman -Rns"
+    abbr -a -g pss 'pacman -Ss'
 
     # yay (AUR helper) — additive only, does not override pacman aliases
     if command -q yay
-        abbr -a yi 'yay -S'
-        abbr -a yr 'yay -Rns'
-        abbr -a ys 'yay -Ss'
-        abbr -a yu 'yay -Syu'
-        abbr -a pyu 'sudo pacman -Syu && yay -Syu'
-        abbr -a yc 'yay -Sc'
-        abbr -a ycc 'yay -Scc'
-        abbr -a ylo 'yay -Qdt'
-        abbr -a ylu 'yay -Qu'
+        abbr -a -g yi 'yay -S'
+        abbr -a -g yr 'yay -Rns'
+        abbr -a -g ys 'yay -Ss'
+        abbr -a -g yu 'yay -Syu'
+        abbr -a -g pyu 'yay -Syu'
+        abbr -a -g yc 'yay -Sc'
+        abbr -a -g ycc 'yay -Scc'
+        abbr -a -g ylo 'yay -Qdt'
+        abbr -a -g ylu 'yay -Qu'
     end
 else if command -q apt
-    abbr -a update 'sudo apt update && sudo apt upgrade'
-    abbr -a install 'sudo apt install'
-    abbr -a remove 'sudo apt remove'
-    abbr -a search 'apt search'
+    abbr -a -g pu "$sudo apt update && $sudo apt upgrade"
+    abbr -a -g pi "$sudo apt install"
+    abbr -a -g pr "$sudo apt remove"
+    abbr -a -g pss 'apt search'
 else if command -q dnf
-    abbr -a update 'sudo dnf upgrade'
-    abbr -a install 'sudo dnf install'
-    abbr -a remove 'sudo dnf remove'
-    abbr -a search 'dnf search'
+    abbr -a -g pu "$sudo dnf upgrade"
+    abbr -a -g pi "$sudo dnf install"
+    abbr -a -g pr "$sudo dnf remove"
+    abbr -a -g pss 'dnf search'
+else if command -q zypper
+    # Tumbleweed is rolling and must use `dup`; Leap uses `update`
+    if grep -qs tumbleweed /etc/os-release
+        abbr -a -g pu "$sudo zypper dup"
+    else
+        abbr -a -g pu "$sudo zypper update"
+    end
+    abbr -a -g pi "$sudo zypper install"
+    abbr -a -g pr "$sudo zypper remove --clean-deps"
+    abbr -a -g pss 'zypper search'
+else if command -q apk
+    abbr -a -g pu "$sudo apk update && $sudo apk upgrade"
+    abbr -a -g pi "$sudo apk add"
+    abbr -a -g pr "$sudo apk del"
+    abbr -a -g pss 'apk search'
+else if command -q xbps-install
+    abbr -a -g pu "$sudo xbps-install -Su"
+    abbr -a -g pi "$sudo xbps-install -S"
+    abbr -a -g pr "$sudo xbps-remove -R"
+    abbr -a -g pss 'xbps-query -Rs'
 end
 
 # ── Navigation ────────────────────────────────
-abbr -a .. 'cd ..'
-abbr -a ... 'cd ../..'
-abbr -a .... 'cd ../../..'
+abbr -a -g .. 'cd ..'
+abbr -a -g ... 'cd ../..'
+abbr -a -g .... 'cd ../../..'
 alias ll='ls -lAh --color=auto'
 alias la='ls -A --color=auto'
 
-# ── Power / System ────────────────────────────
-abbr -a rs 'sudo reboot'
-abbr -a po 'sudo poweroff'
-abbr -a halt 'sudo halt'
-abbr -a sd 'sudo shutdown -h now'
+# ── Power / System (each asks before acting) ──
+function _confirm_power
+    read -l -P "$argv[1] now? [y/N] " reply
+    string match -qi 'y*' -- $reply
+end
+
+function rs -V sudo --description 'Reboot (asks first)'
+    _confirm_power Reboot; and $sudo reboot
+end
+
+function po -V sudo --description 'Power off (asks first)'
+    _confirm_power 'Power off'; and $sudo poweroff
+end
+
+function halt -V sudo --description 'Halt (asks first)'
+    _confirm_power Halt; and $sudo halt
+end
+
+# Skip if the `sd` find-and-replace tool is installed, so we don't shadow it
+if not command -q sd
+    function sd -V sudo --description 'Shut down (asks first)'
+        _confirm_power 'Shut down'; and $sudo shutdown -h now
+    end
+end
 
 # ── Firewall (UFW) ────────────────────────────
-abbr -a ufwe 'sudo ufw enable'
-abbr -a ufwd 'sudo ufw disable'
-abbr -a ufws 'sudo ufw status verbose'
-abbr -a ufwa 'sudo ufw allow'
-abbr -a ufwden 'sudo ufw deny'
-abbr -a ufwr 'sudo ufw reload'
+if command -q ufw
+    abbr -a -g ufwe "$sudo ufw enable"
+    abbr -a -g ufwd "$sudo ufw disable"
+    abbr -a -g ufws "$sudo ufw status verbose"
+    abbr -a -g ufwa "$sudo ufw allow"
+    abbr -a -g ufwden "$sudo ufw deny"
+    abbr -a -g ufwr "$sudo ufw reload"
+end
 
-# ── Path Management ───────────────────────────
-abbr -a pathadd 'fish_add_path'
-abbr -a pathappend 'fish_add_path --append'
+# ── Path Management (current session only) ───
+function pathadd --description 'Prepend current directory to PATH (this session only)'
+    set -gx PATH $PWD $PATH
+end
+
+function pathappend --description 'Append current directory to PATH (this session only)'
+    set -gx PATH $PATH $PWD
+end
 
 # ── Misc ──────────────────────────────────────
-abbr -a c clear
-abbr -a h history
-abbr -a ports 'ss -tulnp'
-abbr -a myip 'curl -s ifconfig.me'
-abbr -a bp 'btop --force-utf'
+abbr -a -g c clear
+abbr -a -g h history
+abbr -a -g ports 'ss -tulnp'
+abbr -a -g myip 'curl -s ifconfig.me'
+if command -q btop
+    abbr -a -g bp 'btop --force-utf'
+end
 
 function mkcd
-    mkdir -p $argv[1]; and cd $argv[1]
+    mkdir -p -- $argv[1]; and cd -- $argv[1]
 end

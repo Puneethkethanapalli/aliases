@@ -10,11 +10,13 @@ set -euo pipefail
 REPO_URL="https://github.com/Puneethkethanapalli/aliases.git"
 CLONE_DIR="$HOME/aliases"
 
-_script_dir() {
-    cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd
-}
-
-SCRIPT_DIR="$(_script_dir 2>/dev/null || echo "")"
+# Checked at top level on purpose: under `bash -c "$(curl ...)"` or `curl | bash`
+# BASH_SOURCE is empty here, but inside a function it reads back as $0 ("bash"),
+# whose dirname "." would make us adopt whatever directory the user is in.
+SCRIPT_DIR=""
+if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || SCRIPT_DIR=""
+fi
 
 if [ -z "$SCRIPT_DIR" ] || [ ! -f "$SCRIPT_DIR/aliases.sh" ]; then
     echo ""
@@ -32,9 +34,13 @@ fi
 # ── Constants ─────────────────────────────────
 ALIASES_SH="$SCRIPT_DIR/aliases.sh"
 ALIASES_FISH="$SCRIPT_DIR/aliases.fish"
-FISH_CONF_DIR="$HOME/.config/fish/conf.d"
+FISH_CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/fish/conf.d"
 FISH_TARGET="$FISH_CONF_DIR/aliases.fish"
 SOURCE_TAG="# aliases-bootstrap"
+# Appears in the header of this repo's alias files; used to recognise old installs
+REPO_MARKER="github.com/Puneethkethanapalli/aliases"
+# Set by -y/--yes: answer yes to every prompt
+ASSUME_YES=false
 
 # The source line we inject into bash/zsh rc files
 source_line() {
@@ -60,6 +66,14 @@ log_err()  { echo -e "  ${RED}✗${RESET} $1"; }
 declare -a SHELLS=()
 declare -a RC_FILES=()
 
+# zsh reads $ZDOTDIR/.zshrc, and ZDOTDIR is usually set in ~/.zshenv —
+# so ask zsh itself rather than trusting this script's environment
+zsh_rc_file() {
+    local zdotdir
+    zdotdir="$(zsh -c 'printf "%s\n" "${ZDOTDIR:-$HOME}"' 2>/dev/null | tail -n 1)" || true
+    echo "${zdotdir:-$HOME}/.zshrc"
+}
+
 detect_shells() {
     SHELLS=()
     RC_FILES=()
@@ -70,7 +84,7 @@ detect_shells() {
     fi
     if command -v zsh > /dev/null 2>&1; then
         SHELLS+=("zsh")
-        RC_FILES+=("$HOME/.zshrc")
+        RC_FILES+=("$(zsh_rc_file)")
     fi
     if command -v fish > /dev/null 2>&1; then
         SHELLS+=("fish")
@@ -103,23 +117,25 @@ is_configured() {
     return 1
 }
 
+# Only checks names defined on every distro — package aliases like `pi`
+# don't exist when no supported package manager is found
 verify_shell() {
     local shell="$1"
 
     case "$shell" in
         bash)
             bash --noprofile --rcfile "$HOME/.bashrc" -ic \
-                'alias nd >/dev/null && alias pi >/dev/null && declare -F mkcd >/dev/null' \
+                'alias nd >/dev/null && declare -F mkcd >/dev/null' \
                 >/dev/null 2>&1
             ;;
         zsh)
-            ZDOTDIR="$HOME" zsh -ic \
-                'alias nd >/dev/null && alias pi >/dev/null && whence -w mkcd >/dev/null' \
+            zsh -ic \
+                'alias nd >/dev/null && whence -w mkcd >/dev/null' \
                 >/dev/null 2>&1
             ;;
         fish)
             fish -ic \
-                'abbr --query nd; and abbr --query pi; and functions --query mkcd' \
+                'abbr --query nd; and functions --query mkcd' \
                 >/dev/null 2>&1
             ;;
         *)
@@ -148,6 +164,7 @@ verify_shells() {
 
 get_rc_file() {
     local shell="$1"
+    local idx
     for idx in "${!SHELLS[@]}"; do
         if [ "${SHELLS[$idx]}" = "$shell" ]; then
             echo "${RC_FILES[$idx]}"
@@ -165,6 +182,7 @@ add_source_line() {
         bash|zsh)
             # Create rc file if it doesn't exist (common for zsh on fresh installs)
             if [ ! -f "$rc" ]; then
+                mkdir -p "$(dirname "$rc")"
                 touch "$rc"
                 log_info "Created $rc"
             fi
@@ -177,7 +195,28 @@ add_source_line() {
             log_ok "$shell — added source line to $rc"
             ;;
         fish)
+            if is_configured fish; then
+                log_info "fish — already configured"
+                return
+            fi
             mkdir -p "$FISH_CONF_DIR"
+            if [ -e "$FISH_TARGET" ] || [ -L "$FISH_TARGET" ]; then
+                if [ ! -e "$FISH_TARGET" ] || grep -qF "$REPO_MARKER" "$FISH_TARGET" 2>/dev/null; then
+                    # Broken link, or a link/copy from an older install of this repo
+                    log_info "fish — replacing old install at $FISH_TARGET"
+                else
+                    # Someone else's file with the same name — never overwrite it silently
+                    local backup
+                    backup="$FISH_TARGET.bak.$(date +%Y%m%d-%H%M%S)"
+                    log_warn "fish — $FISH_TARGET already exists and isn't from this repo"
+                    if ! confirm "Move it to $(basename "$backup") (fish won't load it there) and continue?" "n"; then
+                        log_info "Skipped fish — existing file left untouched"
+                        return
+                    fi
+                    mv "$FISH_TARGET" "$backup"
+                    log_ok "fish — moved existing file to $backup"
+                fi
+            fi
             ln -sf "$ALIASES_FISH" "$FISH_TARGET"
             log_ok "fish — symlinked to $FISH_TARGET"
             ;;
@@ -189,19 +228,30 @@ remove_source_line() {
 
     case "$shell" in
         bash|zsh)
-            local rc
+            local rc tmp
             rc="$(get_rc_file "$shell")"
             if [ -f "$rc" ] && grep -qF "$SOURCE_TAG" "$rc" 2>/dev/null; then
-                sed -i "/$SOURCE_TAG/d" "$rc"
-                # Clean up any trailing blank lines we left behind
-                sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$rc"
+                # Drop our line and the blank line install put above it. Write the
+                # result back through the file (not sed -i), so a symlinked rc
+                # managed by stow/chezmoi etc. stays a symlink.
+                tmp="$(mktemp)"
+                awk -v tag="$SOURCE_TAG" '
+                    index($0, tag) { blank = 0; next }
+                    blank          { print ""; blank = 0 }
+                    /^$/           { blank = 1; next }
+                                   { print }
+                    END            { if (blank) print "" }
+                ' "$rc" > "$tmp"
+                cat "$tmp" > "$rc"
+                rm -f "$tmp"
                 log_ok "$shell — removed source line from $rc"
             else
                 log_info "$shell — not configured, nothing to remove"
             fi
             ;;
         fish)
-            if [ -L "$FISH_TARGET" ] || [ -f "$FISH_TARGET" ]; then
+            # Only remove our own symlink, never a file that just shares the name
+            if is_configured fish; then
                 rm -f "$FISH_TARGET"
                 log_ok "fish — removed $FISH_TARGET"
             else
@@ -222,7 +272,14 @@ confirm() {
         printf "  %s [y/N]: " "$prompt"
     fi
 
-    read -r yn < /dev/tty
+    if $ASSUME_YES; then
+        echo "y (--yes)"
+        return 0
+    fi
+    if ! { read -r yn < /dev/tty; } 2>/dev/null; then
+        yn="$default"
+        echo "$default (no terminal — using default; pass --yes to accept all)"
+    fi
     yn="${yn:-$default}"
     case "$yn" in
         [Yy]*) return 0 ;;
@@ -233,15 +290,17 @@ confirm() {
 # ── Alias Summary ────────────────────────────
 
 _parse_aliases_sh() {
-    # Source in a clean interactive subshell to get only what's active on this machine
-    local shell_bin="$1"  # bash or zsh
+    # Source in a clean interactive bash to get only what's active on this machine.
+    # bash is used for zsh too: same file, and zsh has no --norc or declare -F.
     local combined
-    combined="$("$shell_bin" --norc --noprofile -i -c ". '$ALIASES_SH'; alias; declare -F" 2>/dev/null)"
+    combined="$(bash --norc --noprofile -i -c ". '$ALIASES_SH'; alias; declare -F" 2>/dev/null)"
 
-    # Aliases (sorted)
+    # Aliases (sorted). bash prints embedded quotes as '\'' — turn them back into '
+    local q="'\\''"
     while IFS='=' read -r name value; do
         value="${value#\'}"
         value="${value%\'}"
+        value="${value//"$q"/\'}"
         printf "    ${CYAN}%-16s${RESET} %s\n" "$name" "$value"
     done < <(echo "$combined" | sed -n "s/^alias //p" | sort)
 
@@ -252,25 +311,48 @@ _parse_aliases_sh() {
 }
 
 _parse_aliases_fish() {
-    local file="$1"
+    # Let fish evaluate the file, so distro/tool conditions resolve exactly as they
+    # will at startup. An empty config dir keeps the user's own abbreviations out.
+    local cfg out line name value
+    local -a fn_names=()
+
+    # Function names (incl. `alias`, which defines a function); `_` ones are internal
+    while IFS= read -r name; do
+        fn_names+=("$name")
+    done < <(sed -nE 's/^[[:space:]]*(function[[:space:]]+([A-Za-z][A-Za-z0-9_-]*)|alias[[:space:]]+([A-Za-z][A-Za-z0-9_-]*)=).*/\2\3/p' "$ALIASES_FISH")
+
+    cfg="$(mktemp -d)"
+    out="$(XDG_CONFIG_HOME="$cfg" fish -c '
+        source $argv[1]
+        abbr --show
+        for f in $argv[2..-1]
+            functions -q $f; and echo "function $f"
+        end
+    ' "$ALIASES_FISH" "${fn_names[@]}" 2>/dev/null)" || true
+    rm -rf "$cfg"
+
+    # `abbr --show` prints e.g.:  abbr -a -- gs 'git status'
     while IFS= read -r line; do
-        if [[ "$line" =~ ^#\ ──\ (.+)$ ]]; then
-            local section="${BASH_REMATCH[1]}"
-            section="${section%%─*}"
-            section="${section% }"
-            printf "\n    ${DIM}%s${RESET}\n" "$section"
-        elif [[ "$line" =~ ^[[:space:]]*abbr\ -a\ ([^[:space:]]+)[[:space:]]\'([^\']+)\' ]]; then
-            printf "    ${CYAN}%-16s${RESET} %s\n" "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
-        elif [[ "$line" =~ ^function[[:space:]]+([a-z_][a-z0-9_]*) ]]; then
-            printf "    ${CYAN}%-16s${RESET} (function)\n" "${BASH_REMATCH[1]}"
+        [[ "$line" =~ ^abbr\ (-[^\ ]+\ )*--\ ([^\ ]+)\ (.*)$ ]] || continue
+        name="${BASH_REMATCH[2]}"
+        value="${BASH_REMATCH[3]}"
+        if [[ "$value" == \'*\' ]]; then
+            value="${value:1:${#value}-2}"
+            value="${value//\\\'/\'}"
         fi
-    done < "$file"
+        printf "    ${CYAN}%-16s${RESET} %s\n" "$name" "$value"
+    done < <(echo "$out" | grep '^abbr ' | sort)
+
+    while IFS= read -r name; do
+        printf "    ${CYAN}%-16s${RESET} (function)\n" "$name"
+    done < <(echo "$out" | sed -n 's/^function //p' | sort)
 }
 
 show_aliases_summary() {
     local -a shells_to_show=("$@")
     local show_fish=false
     local -a sh_shells=()
+    local s
 
     for s in "${shells_to_show[@]}"; do
         case "$s" in
@@ -285,19 +367,19 @@ show_aliases_summary() {
     # bash and zsh share the same aliases.sh — deduplicate if both configured
     if [ ${#sh_shells[@]} -gt 0 ]; then
         local label
-        label="$(IFS=', '; echo "${sh_shells[*]}")"
+        label="$(printf '%s, ' "${sh_shells[@]}")"
+        label="${label%, }"
         echo ""
         echo -e "  ${BOLD}Aliases available in $label:${RESET}"
         echo ""
-        # Use the first configured sh-compatible shell to evaluate
-        _parse_aliases_sh "${sh_shells[0]}"
+        _parse_aliases_sh
     fi
 
     if $show_fish; then
         echo ""
         echo -e "  ${BOLD}Aliases available in fish:${RESET}"
-        _parse_aliases_fish "$ALIASES_FISH"
         echo ""
+        _parse_aliases_fish
     fi
 
     echo ""
@@ -448,14 +530,6 @@ do_update() {
         echo ""
     fi
 
-    # Verify existing shells still have source line
-    for shell in "${existing_shells[@]}"; do
-        if ! is_configured "$shell"; then
-            log_warn "$shell — source line was removed, re-adding..."
-            add_source_line "$shell"
-        fi
-    done
-
     if [ ${#new_shells[@]} -eq 0 ] && [ ${#broken_shells[@]} -eq 0 ]; then
         log_ok "All shells up to date"
     fi
@@ -545,12 +619,7 @@ do_status() {
         fi
 
         if $installed; then
-            # Find rc file
-            case "$shell" in
-                bash) rc="$HOME/.bashrc" ;;
-                zsh)  rc="$HOME/.zshrc" ;;
-                fish) rc="$FISH_TARGET" ;;
-            esac
+            rc="$(get_rc_file "$shell")"
 
             if is_configured "$shell"; then
                 configured=true
@@ -608,7 +677,12 @@ show_menu() {
     printf "  Choose [1-4/q]: "
 
     local choice
-    read -r choice < /dev/tty
+    if ! { read -r choice < /dev/tty; } 2>/dev/null; then
+        echo ""
+        log_err "No terminal for the menu — pass a command instead"
+        usage
+        exit 1
+    fi
     case "$choice" in
         1) do_install ;;
         2) do_update ;;
@@ -624,19 +698,38 @@ show_menu() {
 
 # ── Entry Point ───────────────────────────────
 
+usage() {
+    echo ""
+    echo "  Usage: bash setup.sh [install|update|uninstall|status] [-y|--yes]"
+    echo ""
+}
+
 main() {
-    # CLI arg support: bash setup.sh install|update|uninstall|status
-    case "${1:-}" in
+    # CLI arg support: bash setup.sh install|update|uninstall|status [-y|--yes]
+    local cmd="" arg
+    for arg in "$@"; do
+        case "$arg" in
+            -y|--yes) ASSUME_YES=true ;;
+            *)
+                if [ -n "$cmd" ]; then
+                    log_err "Unexpected argument: $arg"
+                    usage
+                    exit 1
+                fi
+                cmd="$arg"
+                ;;
+        esac
+    done
+
+    case "$cmd" in
         install)   do_install ;;
         update)    do_update ;;
         uninstall) do_uninstall ;;
         status)    do_status ;;
         "")        show_menu ;;
         *)
-            log_err "Unknown command: $1"
-            echo ""
-            echo "  Usage: bash setup.sh [install|update|uninstall|status]"
-            echo ""
+            log_err "Unknown command: $cmd"
+            usage
             exit 1
             ;;
     esac

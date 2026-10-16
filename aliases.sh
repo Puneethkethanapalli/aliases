@@ -2,13 +2,17 @@
 #  Shell Aliases — github.com/Puneethkethanapalli/aliases
 # ──────────────────────────────────────────────
 # Sourced by ~/.bashrc and ~/.zshrc via setup.sh
+# Safe to re-source (e.g. `source ~/.bashrc`) to pick up changes.
 
 # Skip in non-interactive shells (scripts, CI, etc.)
 case $- in *i*) ;; *) return ;; esac
 
-# Prevent double-loading in the same session
-[ -n "$_ALIASES_LOADED" ] && return
-_ALIASES_LOADED=1
+# Privilege prefix: doas where sudo isn't installed (e.g. Alpine), else sudo
+if ! command -v sudo > /dev/null 2>&1 && command -v doas > /dev/null 2>&1; then
+    _sudo='doas'
+else
+    _sudo='sudo'
+fi
 
 # ── Node / NPM ───────────────────────────────
 alias nd='npm run dev'
@@ -20,9 +24,10 @@ alias nci='npm ci'
 
 # ── Git ───────────────────────────────────────
 alias gs='git status'
-alias ga='git add .'
+alias ga='git add'
 alias gaa='git add --all'
-alias gc='git commit -m ""'
+alias gc='git commit'
+alias gcm='git commit -m'
 alias gp='git push'
 alias gl='git pull'
 alias gd='git diff'
@@ -32,12 +37,13 @@ alias gco='git checkout'
 alias gsw='git switch'
 alias gst='git stash'
 
-# ── System (OS-detected) ─────────────────────
+# ── Packages (same names on every distro) ─────
+#   pu = update system   pi = install   pr = remove   pss = search
 if command -v pacman > /dev/null 2>&1; then
-    alias pu='sudo pacman -Syu'
-    alias pi='sudo pacman -S'
-    alias pr='sudo pacman -Rns'
-    alias ps='pacman -Ss'
+    alias pu="$_sudo pacman -Syu"
+    alias pi="$_sudo pacman -S"
+    alias pr="$_sudo pacman -Rns"
+    alias pss='pacman -Ss'
 
     # yay (AUR helper) — additive only, does not override pacman aliases
     if command -v yay > /dev/null 2>&1; then
@@ -45,22 +51,42 @@ if command -v pacman > /dev/null 2>&1; then
         alias yr='yay -Rns'               # remove
         alias ys='yay -Ss'                # search AUR + official
         alias yu='yay -Syu'               # update official + AUR
-        alias pyu='sudo pacman -Syu && yay -Syu'
+        alias pyu='yay -Syu'              # same as yu (yay already runs pacman -Syu first)
         alias yc='yay -Sc'                # clean build cache
         alias ycc='yay -Scc'              # clean all cache
         alias ylo='yay -Qdt'              # list orphaned packages
         alias ylu='yay -Qu'               # list upgradable packages
     fi
 elif command -v apt > /dev/null 2>&1; then
-    alias update='sudo apt update && sudo apt upgrade'
-    alias install='sudo apt install'
-    alias remove='sudo apt remove'
-    alias search='apt search'
+    alias pu="$_sudo apt update && $_sudo apt upgrade"
+    alias pi="$_sudo apt install"
+    alias pr="$_sudo apt remove"
+    alias pss='apt search'
 elif command -v dnf > /dev/null 2>&1; then
-    alias update='sudo dnf upgrade'
-    alias install='sudo dnf install'
-    alias remove='sudo dnf remove'
-    alias search='dnf search'
+    alias pu="$_sudo dnf upgrade"
+    alias pi="$_sudo dnf install"
+    alias pr="$_sudo dnf remove"
+    alias pss='dnf search'
+elif command -v zypper > /dev/null 2>&1; then
+    # Tumbleweed is rolling and must use `dup`; Leap uses `update`
+    if grep -qs tumbleweed /etc/os-release; then
+        alias pu="$_sudo zypper dup"
+    else
+        alias pu="$_sudo zypper update"
+    fi
+    alias pi="$_sudo zypper install"
+    alias pr="$_sudo zypper remove --clean-deps"
+    alias pss='zypper search'
+elif command -v apk > /dev/null 2>&1; then
+    alias pu="$_sudo apk update && $_sudo apk upgrade"
+    alias pi="$_sudo apk add"
+    alias pr="$_sudo apk del"
+    alias pss='apk search'
+elif command -v xbps-install > /dev/null 2>&1; then
+    alias pu="$_sudo xbps-install -Su"
+    alias pi="$_sudo xbps-install -S"
+    alias pr="$_sudo xbps-remove -R"
+    alias pss='xbps-query -Rs'
 fi
 
 # ── Navigation ────────────────────────────────
@@ -72,21 +98,32 @@ alias ll='ls -lAh --color=auto'
 alias la='ls -A --color=auto'
 alias grep='grep --color=auto'
 
-# ── Power / System ────────────────────────────
-alias rs='sudo reboot'
-alias po='sudo poweroff'
-alias halt='sudo halt'
-alias sd='sudo shutdown -h now'
+# ── Power / System (each asks before acting) ──
+_confirm_power() {
+    local reply
+    printf '%s now? [y/N] ' "$1"
+    read -r reply
+    case "$reply" in [yY]*) return 0 ;; *) return 1 ;; esac
+}
+alias rs="_confirm_power Reboot && $_sudo reboot"
+alias po="_confirm_power 'Power off' && $_sudo poweroff"
+alias halt="_confirm_power Halt && $_sudo halt"
+# Skip if the `sd` find-and-replace tool is installed, so we don't shadow it
+if ! command -v sd > /dev/null 2>&1; then
+    alias sd="_confirm_power 'Shut down' && $_sudo shutdown -h now"
+fi
 
 # ── Firewall (UFW) ────────────────────────────
-alias ufwe='sudo ufw enable'
-alias ufwd='sudo ufw disable'
-alias ufws='sudo ufw status verbose'
-alias ufwa='sudo ufw allow'
-alias ufwden='sudo ufw deny'
-alias ufwr='sudo ufw reload'
+if command -v ufw > /dev/null 2>&1; then
+    alias ufwe="$_sudo ufw enable"
+    alias ufwd="$_sudo ufw disable"
+    alias ufws="$_sudo ufw status verbose"
+    alias ufwa="$_sudo ufw allow"
+    alias ufwden="$_sudo ufw deny"
+    alias ufwr="$_sudo ufw reload"
+fi
 
-# ── Path Management ───────────────────────────
+# ── Path Management (current session only) ───
 alias pathadd='export PATH="$(pwd):$PATH"'
 alias pathappend='export PATH="$PATH:$(pwd)"'
 
@@ -95,5 +132,9 @@ alias c='clear'
 alias h='history'
 alias ports='ss -tulnp'
 alias myip='curl -s ifconfig.me'
-alias bp='btop --force-utf'
-mkcd() { mkdir -p "$1" && cd "$1"; }
+if command -v btop > /dev/null 2>&1; then
+    alias bp='btop --force-utf'
+fi
+mkcd() { mkdir -p -- "$1" && cd -- "$1"; }
+
+unset _sudo
