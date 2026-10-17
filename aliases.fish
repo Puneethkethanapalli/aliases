@@ -130,6 +130,29 @@ if command -q ufw
     abbr -a -g ufwr "$sudo ufw reload"
 end
 
+# ── Omarchy ───────────────────────────────────
+# `o` + group + action; `pu` stays plain pacman, `ou` is the Omarchy way
+if command -q omarchy
+    abbr -a -g ou 'omarchy update'
+    abbr -a -g opi 'omarchy pkg install'
+    abbr -a -g opr 'omarchy pkg remove'
+    abbr -a -g opa 'omarchy pkg aur install'
+    abbr -a -g ots 'omarchy theme set'
+    abbr -a -g otl 'omarchy theme list'
+    abbr -a -g otc 'omarchy theme current'
+    abbr -a -g obg 'omarchy theme bg next'
+    abbr -a -g ors 'omarchy restart shell'
+    abbr -a -g ort 'omarchy restart terminal'
+    abbr -a -g orw 'omarchy restart wifi'
+    abbr -a -g orb 'omarchy restart bluetooth'
+    abbr -a -g ora 'omarchy restart audio'
+    abbr -a -g onl 'omarchy toggle nightlight'
+    abbr -a -g oidle 'omarchy toggle idle'
+    abbr -a -g olk 'omarchy system lock'
+    abbr -a -g okb 'omarchy menu keybindings'
+    abbr -a -g orem 'omarchy reminder'
+end
+
 # ── Path Management (current session only) ───
 function pathadd --description 'Prepend current directory to PATH (this session only)'
     set -gx PATH $PWD $PATH

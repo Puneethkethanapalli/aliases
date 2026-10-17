@@ -79,8 +79,36 @@ the `y*` aliases (`yi`, `yu`, `ys`, …) are added too.
 
 ### Only defined when the tool is installed
 
-`ufw*` (UFW firewall), `bp` (btop), and `sd` (skipped if the `sd` find-and-replace tool is installed,
-so it isn't shadowed).
+`ufw*` (UFW firewall), `bp` (btop), the Omarchy aliases below, and `sd` (skipped if the `sd`
+find-and-replace tool is installed, so it isn't shadowed).
+
+### Omarchy
+
+Defined when the `omarchy` command is installed. Names are `o` + group + action.
+
+| Alias   | Command                         | Does                                    |
+|---------|---------------------------------|-----------------------------------------|
+| `ou`    | `omarchy update`                | update Omarchy and system packages      |
+| `opi`   | `omarchy pkg install`           | pick packages to install                |
+| `opr`   | `omarchy pkg remove`            | pick packages to remove                 |
+| `opa`   | `omarchy pkg aur install`       | pick AUR packages to install            |
+| `ots`   | `omarchy theme set`             | apply a theme (e.g. `ots catppuccin`)   |
+| `otl`   | `omarchy theme list`            | list themes                             |
+| `otc`   | `omarchy theme current`         | show the current theme                  |
+| `obg`   | `omarchy theme bg next`         | next background for the theme           |
+| `ors`   | `omarchy restart shell`         | restart the bar and notifications       |
+| `ort`   | `omarchy restart terminal`      | reload terminals after config changes   |
+| `orw`   | `omarchy restart wifi`          | restart Wi-Fi                           |
+| `orb`   | `omarchy restart bluetooth`     | restart Bluetooth                       |
+| `ora`   | `omarchy restart audio`         | restart audio                           |
+| `onl`   | `omarchy toggle nightlight`     | toggle night light                      |
+| `oidle` | `omarchy toggle idle`           | toggle staying awake                    |
+| `olk`   | `omarchy system lock`           | lock the screen                         |
+| `okb`   | `omarchy menu keybindings`      | search your Hyprland keybindings        |
+| `orem`  | `omarchy reminder`              | set a reminder (e.g. `orem 15 "Tea"`)   |
+
+`pu` stays plain `pacman -Syu`; use `ou` for Omarchy's own update, which takes a snapshot first and
+also updates the keyring, runs Omarchy's migrations and updates AUR packages.
 
 ### Power
 

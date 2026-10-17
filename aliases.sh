@@ -126,6 +126,29 @@ if command -v ufw > /dev/null 2>&1; then
     alias ufwr="$_sudo ufw reload"
 fi
 
+# ── Omarchy ───────────────────────────────────
+# `o` + group + action; `pu` stays plain pacman, `ou` is the Omarchy way
+if command -v omarchy > /dev/null 2>&1; then
+    alias ou='omarchy update'                # update Omarchy + system packages
+    alias opi='omarchy pkg install'          # pick packages to install
+    alias opr='omarchy pkg remove'           # pick packages to remove
+    alias opa='omarchy pkg aur install'      # pick AUR packages to install
+    alias ots='omarchy theme set'            # e.g. `ots catppuccin`
+    alias otl='omarchy theme list'
+    alias otc='omarchy theme current'
+    alias obg='omarchy theme bg next'        # next background for the theme
+    alias ors='omarchy restart shell'        # bar, notifications
+    alias ort='omarchy restart terminal'
+    alias orw='omarchy restart wifi'
+    alias orb='omarchy restart bluetooth'
+    alias ora='omarchy restart audio'
+    alias onl='omarchy toggle nightlight'
+    alias oidle='omarchy toggle idle'        # stay awake / allow idle
+    alias olk='omarchy system lock'
+    alias okb='omarchy menu keybindings'
+    alias orem='omarchy reminder'            # e.g. `orem 15 "Tea"`
+fi
+
 # ── Path Management (current session only) ───
 alias pathadd='export PATH="$(pwd):$PATH"'
 alias pathappend='export PATH="$PATH:$(pwd)"'
